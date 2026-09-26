@@ -12,8 +12,7 @@ export const signUp = createServerFn({ method: 'POST' })
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      // The on_auth_user_created trigger reads raw_user_meta_data ->> 'username'
-      // into profiles.username, then strips the key.
+      // on_auth_user_created reads username out of here into profiles.
       options: { data: { username: data.username } },
     })
 

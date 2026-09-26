@@ -7,9 +7,7 @@ import {
 import type { CookieMethodsServer } from '@supabase/ssr'
 import type { Database } from '@/lib/supabase/database.types'
 
-// Stateless: the per-request state lives in getCookies()/setCookie(), which read
-// the ambient request. Typing this explicitly pins createServerClient to its
-// getAll/setAll overload; the get/set/remove one is deprecated.
+// Typed explicitly to pin the getAll/setAll overload; get/set/remove is deprecated.
 const cookies: CookieMethodsServer = {
   getAll() {
     return Object.entries(getCookies()).map(([name, value]) => ({

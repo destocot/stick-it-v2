@@ -36,9 +36,7 @@ function RouteComponent() {
       username: field(form, 'username'),
     }
 
-    // Same schema runs again on the server, where it is the trust boundary.
-    // Checking here first turns its messages into form feedback instead of a
-    // rejected promise.
+    // The server runs this schema too; here it is only to surface the message.
     const issue = firstIssue(SignUpSchema, payload)
 
     if (issue) {
