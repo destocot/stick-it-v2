@@ -30,6 +30,18 @@ Implications this places on the stack:
 | 2026-09-04 | Added `/login` and `/register` as placeholder routes | Route shells first, forms and auth wiring later |
 | 2026-09-04 | App concept fixed: accounts + sticky notes on one global real-time feed | Scopes out follow graphs, per-user timelines, and fan-out entirely |
 | 2026-09-04 | Added shadcn (`base-nova`); it replaced the `#/*` path alias with `@/*` | Component primitives without hand-rolling them; alias swap was shadcn's doing, not a deliberate choice |
+| 2026-09-25 | Installed `@supabase/supabase-js` + `@supabase/ssr`; browser and server clients in `src/lib/supabase/` | Matches the integration pattern recorded in §3 |
+| 2026-09-25 | Env keys named `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` | The `PUBLISHABLE` in the name marks it browser-safe, so it can never be mistaken for the service-role key |
+| 2026-09-25 | Generated types live at `src/lib/supabase/database.types.ts`, not the repo root | Keeps the client imports relative and short; root was only the CLI's default output path |
+| 2026-09-25 | `supabase/.temp` gitignored; `supabase/` itself kept | `supabase/migrations/` will live there — the folder is the CLI's project root, not clutter |
+| 2026-09-25 | Generated files excluded from ESLint (`routeTree.gen.ts`, `database.types.ts`) | Generated code fails the TanStack naming rules and is rewritten on every regen |
+| 2026-09-25 | Supabase agent skills vendored in `.agents/skills/`, symlinked into `.claude/skills/` | `.agents/` is the cross-tool layout the Supabase skill installer writes; Claude Code only reads `.claude/skills/` |
+| 2026-09-25 | `.agents/` and `.claude/` committed, not ignored | The `.claude/skills` symlinks point into `.agents/`; ignoring either leaves a fresh clone with dangling links |
+| 2026-09-25 | `server.ts` reads `import.meta.env`, not `process.env` | Vite loads `.env` into `import.meta.env` only. Safe here because both values are public; a service-role key must never be read this way, since Vite inlines the value into the bundle at build time |
+| 2026-09-25 | Schema workflow: **dashboard SQL editor only. No migration files in this repo.** | Owner's call. Consequence: the database is the sole source of truth for schema — nothing in git records it. Verify live state with `supabase db query --linked`, and re-run `pnpm gen:types` after every schema change |
+| 2026-09-25 | `supabase/config.toml` kept (from `supabase init`), `supabase/migrations/` removed | The config anchors read-only CLI tooling — `db query --linked`, `db advisors` — without introducing SQL files |
+| 2026-09-25 | Profile rows created by an `after insert on auth.users` trigger, not by client code | Atomic with user creation and works for every signup path; a client-side insert can fail halfway and leave a user with no profile |
+| 2026-09-25 | Trigger function lives in a `private` schema with `EXECUTE` revoked | Postgres grants `EXECUTE` to `PUBLIC` on every new function, so a `security definer` function in `public` is an endpoint callable by `anon` |
 
 ## 3. Stack
 
@@ -42,7 +54,9 @@ Path alias: `@/*` → `./src/*`, declared in `tsconfig.json` and resolved by Vit
 Backend: Supabase — not yet installed. Planned packages: `@supabase/supabase-js`, `@supabase/ssr`.
 Cookie helpers for the server client: `@tanstack/react-start/server` (`getCookies`, `setCookie`, `setResponseHeader`).
 
-Scripts: `dev`, `build`, `preview`, `lint`, `format`, `check`, `generate-routes`.
+Scripts: `dev`, `build`, `preview`, `lint`, `format`, `check`, `generate-routes`, `gen:types`.
+
+`gen:types` hardcodes the Supabase project ref. That ref is not a secret — it is the subdomain of `VITE_SUPABASE_URL`, which ships to the browser regardless.
 
 ## 4. Architecture
 
@@ -50,7 +64,22 @@ _TBD — components, data flow, boundaries._
 
 ## 5. Data Model
 
-_TBD — entities, fields, relationships, storage._
+Current live schema (from `src/lib/supabase/database.types.ts`):
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id`) | RLS on. **Zero policies and zero DML grants as of now, so the table is unreadable** — a SELECT grant and policy are still outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
+
+Deliberately absent for now: `username`. The register form collects it, but it is dropped until a first signup is confirmed working end to end.
+
+Not yet created: the notes table backing the global feed.
+
+Profile creation: `public.handle_new_user()`, a `security definer` trigger function fired by `on_auth_user_created` `after insert on auth.users`. Created in the dashboard.
+
+Design constraints already known:
+
+- `auth.users` is Supabase's, in the `auth` schema — no custom columns, not selectable from the client. All public user data belongs in `public.profiles`, keyed to `auth.users.id`.
+- Realtime broadcasts row changes, not joins. A `notes` INSERT payload carries only `notes` columns, so an author name on the feed means either denormalizing it onto the row or fetching the profile when the event lands.
 
 ## 6. Interfaces
 
@@ -78,6 +107,11 @@ _TBD — endpoints or commands, inputs, outputs._
 | `src/routes/register.tsx` | `/register` route |
 | `src/components/ui/` | shadcn-generated primitives — regenerated by `shadcn add`, don't hand-edit |
 | `src/lib/utils.ts` | Re-exports `cn` |
+| `src/lib/supabase/client.ts` | Browser Supabase client |
+| `src/lib/supabase/server.ts` | Server Supabase client — cookie-backed session |
+| `src/lib/supabase/database.types.ts` | Generated from the live schema by `pnpm gen:types` — never hand-edit |
+| `supabase/` | Supabase CLI project root; migrations will live in `supabase/migrations/` |
+| `.agents/skills/` | Vendored Supabase agent skills, pinned by `skills-lock.json` |
 | `components.json` | shadcn config: style, aliases, css entry |
 | `src/routeTree.gen.ts` | Generated route tree — never edit by hand |
 | `src/styles.css` | Tailwind entry |
@@ -89,13 +123,15 @@ _TBD — endpoints or commands, inputs, outputs._
 
 ### Database
 
-Every migration that creates a `public` table must include, in the same file:
+Schema changes are made in the Supabase dashboard SQL editor. There are no migration files. Every table added there needs all three of the following, or it will not work:
 
-1. `alter table ... enable row level security;` — explicit, even though the auto-RLS trigger also does it.
-2. Explicit `grant` to `authenticated` (and `anon` only if genuinely public).
-3. At least one policy. RLS on with no policy = table unusable.
+1. RLS enabled — the project's auto-RLS trigger does this for new `public` tables, but only those.
+2. An explicit `grant` to `authenticated` (and `anon` only if genuinely public). "Automatically expose new tables" is off, so without a grant the Data API returns `permission denied for table`.
+3. At least one policy. RLS on with no policy denies everything — no error, just no rows.
 
-Auto-RLS covers only *new* tables in `public`. Tables in other schemas, and anything created before the trigger was enabled, must be audited by hand.
+After any schema change: run `pnpm gen:types` to refresh `database.types.ts`, and `pnpm dlx supabase db advisors --linked` to catch security regressions. The advisor is the check that replaces reviewing a migration diff.
+
+`security definer` functions: always `set search_path = ''`, and always `revoke execute ... from public, anon, authenticated`. Postgres grants `EXECUTE` to `PUBLIC` on every new function, so a `security definer` function in `public` is otherwise a callable API endpoint.
 
 ### Secrets
 
