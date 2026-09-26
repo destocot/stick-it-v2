@@ -70,15 +70,13 @@ _TBD — components, data flow, boundaries._
 
 Current live schema (from `src/lib/supabase/database.types.ts`):
 
-| Table             | Columns                                                                                | Notes                                                                                                                                                                                                                                     |
-| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id` `on delete cascade`), `username` (text, NOT NULL) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
+| Table             | Columns                                                                                        | Notes                                                                                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id` `on delete cascade`), `username` (text, NOT NULL, UNIQUE) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
 
-Open schema questions, all deliberate gaps rather than oversights:
+Open schema question: `NOT NULL` does not reject `''`. The server function rejects a blank username at the app layer; a `CHECK (length(trim(username)) > 0)` would enforce it for every caller.
 
-- `username` has no `UNIQUE` constraint, so two accounts can hold the same name.
-- `NOT NULL` does not reject `''`. The server function rejects a blank username at the app layer; a `CHECK` would enforce it for every caller.
-- `id` carries `DEFAULT gen_random_uuid()`, which is inert — the FK rejects any uuid absent from `auth.users`.
+Because the unique violation fires inside the trigger, a duplicate username rolls back the `auth.users` insert and GoTrue reports only `Database error saving new user`. The account is correctly not created, but the message is opaque. A pre-flight availability check would improve the message without replacing the constraint as the real guarantee — it needs the same SELECT grant as reading profiles, and it is inherently racy.
 
 Not yet created: the notes table backing the global feed.
 

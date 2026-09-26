@@ -20,7 +20,7 @@ export type Database = {
           username: string
         }
         Insert: {
-          id?: string
+          id: string
           username: string
         }
         Update: {

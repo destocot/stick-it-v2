@@ -3,6 +3,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signUp } from '@/lib/auth'
+import { SignUpSchema, firstIssue } from '@/lib/schemas'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
@@ -29,13 +30,24 @@ function RouteComponent() {
 
     const form = new FormData(evt.target)
 
-    const result = await register({
-      data: {
-        email: field(form, 'email'),
-        password: field(form, 'password'),
-        username: field(form, 'username'),
-      },
-    })
+    const payload = {
+      email: field(form, 'email'),
+      password: field(form, 'password'),
+      username: field(form, 'username'),
+    }
+
+    // Same schema runs again on the server, where it is the trust boundary.
+    // Checking here first turns its messages into form feedback instead of a
+    // rejected promise.
+    const issue = firstIssue(SignUpSchema, payload)
+
+    if (issue) {
+      setPending(false)
+      setError(issue)
+      return
+    }
+
+    const result = await register({ data: payload })
 
     setPending(false)
 
