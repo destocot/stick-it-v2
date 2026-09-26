@@ -17,36 +17,40 @@ Implications this places on the stack:
 
 ## 2. Decisions Log
 
-| Date | Decision | Reason |
-|------|----------|--------|
-| 2026-09-04 | Repo initialized as empty dir; `DESIGN.md` created as single source of truth | Incremental build — spec grows one request at a time |
-| 2026-09-04 | Backend = Supabase (Postgres + Auth + Data API) | Managed Postgres w/ row-level auth; official TanStack Start integration exists |
-| 2026-09-04 | Supabase project settings: Data API **on**, auto-expose new tables **off**, automatic RLS **on** | Data API required by `supabase-js`. Auto-expose off keeps table grants explicit — a second lock behind RLS. Auto-RLS trigger removes the "forgot to enable RLS" failure mode |
-| 2026-09-04 | Scaffolded TanStack Start in repo root via `@tanstack/cli create --target-dir . --package-manager pnpm --framework React --no-git --force` | Flat layout, no nested folder; git already initialized |
-| 2026-09-04 | `unrs-resolver` build script allowed in `pnpm-workspace.yaml` | pnpm 11 blocks install scripts by default; this native resolver (pulled in by the TanStack ESLint config) needs its script to link the platform binary |
-| 2026-09-04 | Removed `pnpm.onlyBuiltDependencies` from `package.json` | pnpm 11 no longer reads that field — `allowBuilds` in `pnpm-workspace.yaml` replaces it |
-| 2026-09-04 | No test runner, no extra npm scripts | Add only when a need appears |
-| 2026-09-04 | Deleted scaffold `README.md` and `AGENTS.md`; stripped placeholder UI from `index.tsx`; app title set to `stick-it` | Learning TanStack Start — keep the tree small enough to read end to end |
-| 2026-09-04 | Added `/login` and `/register` as placeholder routes | Route shells first, forms and auth wiring later |
-| 2026-09-04 | App concept fixed: accounts + sticky notes on one global real-time feed | Scopes out follow graphs, per-user timelines, and fan-out entirely |
-| 2026-09-04 | Added shadcn (`base-nova`); it replaced the `#/*` path alias with `@/*` | Component primitives without hand-rolling them; alias swap was shadcn's doing, not a deliberate choice |
-| 2026-09-25 | Installed `@supabase/supabase-js` + `@supabase/ssr`; browser and server clients in `src/lib/supabase/` | Matches the integration pattern recorded in §3 |
-| 2026-09-25 | Env keys named `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` | The `PUBLISHABLE` in the name marks it browser-safe, so it can never be mistaken for the service-role key |
-| 2026-09-25 | Generated types live at `src/lib/supabase/database.types.ts`, not the repo root | Keeps the client imports relative and short; root was only the CLI's default output path |
-| 2026-09-25 | `supabase/.temp` gitignored; `supabase/` itself kept | `supabase/migrations/` will live there — the folder is the CLI's project root, not clutter |
-| 2026-09-25 | Generated files excluded from ESLint (`routeTree.gen.ts`, `database.types.ts`) | Generated code fails the TanStack naming rules and is rewritten on every regen |
-| 2026-09-25 | Supabase agent skills vendored in `.agents/skills/`, symlinked into `.claude/skills/` | `.agents/` is the cross-tool layout the Supabase skill installer writes; Claude Code only reads `.claude/skills/` |
-| 2026-09-25 | `.agents/` and `.claude/` committed, not ignored | The `.claude/skills` symlinks point into `.agents/`; ignoring either leaves a fresh clone with dangling links |
-| 2026-09-25 | `server.ts` reads `import.meta.env`, not `process.env` | Vite loads `.env` into `import.meta.env` only. Safe here because both values are public; a service-role key must never be read this way, since Vite inlines the value into the bundle at build time |
-| 2026-09-25 | Schema workflow: **dashboard SQL editor only. No migration files in this repo.** | Owner's call. Consequence: the database is the sole source of truth for schema — nothing in git records it. Verify live state with `supabase db query --linked`, and re-run `pnpm gen:types` after every schema change |
-| 2026-09-25 | `supabase/config.toml` kept (from `supabase init`), `supabase/migrations/` removed | The config anchors read-only CLI tooling — `db query --linked`, `db advisors` — without introducing SQL files |
-| 2026-09-25 | Profile rows created by an `after insert on auth.users` trigger, not by client code | Atomic with user creation and works for every signup path; a client-side insert can fail halfway and leave a user with no profile |
-| 2026-09-25 | Trigger function lives in a `private` schema with `EXECUTE` revoked | Postgres grants `EXECUTE` to `PUBLIC` on every new function, so a `security definer` function in `public` is an endpoint callable by `anon` |
+| Date       | Decision                                                                                                                                   | Reason                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-04 | Repo initialized as empty dir; `DESIGN.md` created as single source of truth                                                               | Incremental build — spec grows one request at a time                                                                                                                                                                   |
+| 2026-09-04 | Backend = Supabase (Postgres + Auth + Data API)                                                                                            | Managed Postgres w/ row-level auth; official TanStack Start integration exists                                                                                                                                         |
+| 2026-09-04 | Supabase project settings: Data API **on**, auto-expose new tables **off**, automatic RLS **on**                                           | Data API required by `supabase-js`. Auto-expose off keeps table grants explicit — a second lock behind RLS. Auto-RLS trigger removes the "forgot to enable RLS" failure mode                                           |
+| 2026-09-04 | Scaffolded TanStack Start in repo root via `@tanstack/cli create --target-dir . --package-manager pnpm --framework React --no-git --force` | Flat layout, no nested folder; git already initialized                                                                                                                                                                 |
+| 2026-09-04 | `unrs-resolver` build script allowed in `pnpm-workspace.yaml`                                                                              | pnpm 11 blocks install scripts by default; this native resolver (pulled in by the TanStack ESLint config) needs its script to link the platform binary                                                                 |
+| 2026-09-04 | Removed `pnpm.onlyBuiltDependencies` from `package.json`                                                                                   | pnpm 11 no longer reads that field — `allowBuilds` in `pnpm-workspace.yaml` replaces it                                                                                                                                |
+| 2026-09-04 | No test runner, no extra npm scripts                                                                                                       | Add only when a need appears                                                                                                                                                                                           |
+| 2026-09-04 | Deleted scaffold `README.md` and `AGENTS.md`; stripped placeholder UI from `index.tsx`; app title set to `stick-it`                        | Learning TanStack Start — keep the tree small enough to read end to end                                                                                                                                                |
+| 2026-09-04 | Added `/login` and `/register` as placeholder routes                                                                                       | Route shells first, forms and auth wiring later                                                                                                                                                                        |
+| 2026-09-04 | App concept fixed: accounts + sticky notes on one global real-time feed                                                                    | Scopes out follow graphs, per-user timelines, and fan-out entirely                                                                                                                                                     |
+| 2026-09-04 | Added shadcn (`base-nova`); it replaced the `#/*` path alias with `@/*`                                                                    | Component primitives without hand-rolling them; alias swap was shadcn's doing, not a deliberate choice                                                                                                                 |
+| 2026-09-25 | Installed `@supabase/supabase-js` + `@supabase/ssr`; browser and server clients in `src/lib/supabase/`                                     | Matches the integration pattern recorded in §3                                                                                                                                                                         |
+| 2026-09-25 | Env keys named `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`                                                                       | The `PUBLISHABLE` in the name marks it browser-safe, so it can never be mistaken for the service-role key                                                                                                              |
+| 2026-09-25 | Generated types live at `src/lib/supabase/database.types.ts`, not the repo root                                                            | Keeps the client imports relative and short; root was only the CLI's default output path                                                                                                                               |
+| 2026-09-25 | `supabase/.temp` gitignored; `supabase/` itself kept                                                                                       | `supabase/migrations/` will live there — the folder is the CLI's project root, not clutter                                                                                                                             |
+| 2026-09-25 | Generated files excluded from ESLint (`routeTree.gen.ts`, `database.types.ts`)                                                             | Generated code fails the TanStack naming rules and is rewritten on every regen                                                                                                                                         |
+| 2026-09-25 | Supabase agent skills vendored in `.agents/skills/`, symlinked into `.claude/skills/`                                                      | `.agents/` is the cross-tool layout the Supabase skill installer writes; Claude Code only reads `.claude/skills/`                                                                                                      |
+| 2026-09-25 | `.agents/` and `.claude/` committed, not ignored                                                                                           | The `.claude/skills` symlinks point into `.agents/`; ignoring either leaves a fresh clone with dangling links                                                                                                          |
+| 2026-09-25 | `server.ts` reads `import.meta.env`, not `process.env`                                                                                     | Vite loads `.env` into `import.meta.env` only. Safe here because both values are public; a service-role key must never be read this way, since Vite inlines the value into the bundle at build time                    |
+| 2026-09-25 | Schema workflow: **dashboard SQL editor only. No migration files in this repo.**                                                           | Owner's call. Consequence: the database is the sole source of truth for schema — nothing in git records it. Verify live state with `supabase db query --linked`, and re-run `pnpm gen:types` after every schema change |
+| 2026-09-25 | `supabase/config.toml` kept (from `supabase init`), `supabase/migrations/` removed                                                         | The config anchors read-only CLI tooling — `db query --linked`, `db advisors` — without introducing SQL files                                                                                                          |
+| 2026-09-25 | Profile rows created by an `after insert on auth.users` trigger, not by client code                                                        | Atomic with user creation and works for every signup path; a client-side insert can fail halfway and leave a user with no profile                                                                                      |
+| 2026-09-25 | Trigger function lives in a `private` schema with `EXECUTE` revoked                                                                        | Postgres grants `EXECUTE` to `PUBLIC` on every new function, so a `security definer` function in `public` is an endpoint callable by `anon`                                                                            |
+| 2026-09-26 | Auth mutations run in server functions (`src/lib/auth.ts`), not from the browser client                                                    | The session cookie arrives as `Set-Cookie` from our own origin, so the next SSR render already knows the user                                                                                                          |
+| 2026-09-26 | Server functions return `{ error: string \| null }`, never Supabase's raw response                                                         | The raw response carries `access_token` and `refresh_token`. Cookies are the one authoritative store; a copy in React state also goes stale when tokens rotate                                                         |
+| 2026-09-26 | Navigate client-side with `useNavigate` instead of `throw redirect()` from the handler                                                     | With a thrown redirect, `useServerFn` returns `router.navigate(...)` — so `result` is `undefined` while TypeScript still types it as the handler's return. The types were lying; this makes them honest                |
+| 2026-09-26 | Email confirmation disabled in the Supabase dashboard                                                                                      | Defers the `/auth/confirm` route. Re-enabling makes `signUp` return a null session, so the success path must change at the same time                                                                                   |
 
 ## 3. Stack
 
 Framework: TanStack Start (React), Vite 8, React 19, TypeScript 6, Tailwind 4.
-UI: shadcn (`base-nova` style, built on Base UI — *not* Radix), `lucide-react` icons, Inter Variable via `@fontsource-variable/inter`. Class merging via the `cn` package (shadcn's own, re-exported from `src/lib/utils.ts`).
+UI: shadcn (`base-nova` style, built on Base UI — _not_ Radix), `lucide-react` icons, Inter Variable via `@fontsource-variable/inter`. Class merging via the `cn` package (shadcn's own, re-exported from `src/lib/utils.ts`).
 Tooling: ESLint (`@tanstack/eslint-config`) + Prettier. Package manager: pnpm.
 
 Path alias: `@/*` → `./src/*`, declared in `tsconfig.json` and resolved by Vite's `tsconfigPaths`.
@@ -66,9 +70,9 @@ _TBD — components, data flow, boundaries._
 
 Current live schema (from `src/lib/supabase/database.types.ts`):
 
-| Table | Columns | Notes |
-|-------|---------|-------|
-| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id`) | RLS on. **Zero policies and zero DML grants as of now, so the table is unreadable** — a SELECT grant and policy are still outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
+| Table             | Columns                               | Notes                                                                                                                                                                                                                                                                                                                        |
+| ----------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id`) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS. Trigger verified working 2026-09-26: one signup produced one matching profile row |
 
 Deliberately absent for now: `username`. The register form collects it, but it is dropped until a first signup is confirmed working end to end.
 
@@ -87,37 +91,40 @@ Design constraints already known:
 
 Routing is file-based: a file in `src/routes/` becomes a URL, and the Vite plugin regenerates `src/routeTree.gen.ts` on save.
 
-| Route | File | State |
-|-------|------|-------|
-| `/` | `src/routes/index.tsx` | Placeholder |
-| `/login` | `src/routes/login.tsx` | Email + password form, centered card. Markup only — no submit handler, no auth |
-| `/register` | `src/routes/register.tsx` | Placeholder — no form yet |
+| Route       | File                      | State                                                                                                     |
+| ----------- | ------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/`         | `src/routes/index.tsx`    | Placeholder                                                                                               |
+| `/login`    | `src/routes/login.tsx`    | Email + password form, centered card. Markup only — no submit handler, no auth                            |
+| `/register` | `src/routes/register.tsx` | **Working.** Posts to the `signUp` server function, shows the returned error, navigates to `/` on success |
+| `/register` | `src/routes/register.tsx` | Placeholder — no form yet                                                                                 |
 
 ### API / CLI
+
 _TBD — endpoints or commands, inputs, outputs._
 
 ## 7. File Map
 
-| Path | Responsibility |
-|------|----------------|
-| `src/router.tsx` | Router factory; augments `Register` so route types resolve app-wide |
-| `src/routes/__root.tsx` | Root layout, HTML shell, devtools |
-| `src/routes/index.tsx` | `/` route |
-| `src/routes/login.tsx` | `/login` route — form markup only, not wired |
-| `src/routes/register.tsx` | `/register` route |
-| `src/components/ui/` | shadcn-generated primitives — regenerated by `shadcn add`, don't hand-edit |
-| `src/lib/utils.ts` | Re-exports `cn` |
-| `src/lib/supabase/client.ts` | Browser Supabase client |
-| `src/lib/supabase/server.ts` | Server Supabase client — cookie-backed session |
-| `src/lib/supabase/database.types.ts` | Generated from the live schema by `pnpm gen:types` — never hand-edit |
-| `supabase/` | Supabase CLI project root; migrations will live in `supabase/migrations/` |
-| `.agents/skills/` | Vendored Supabase agent skills, pinned by `skills-lock.json` |
-| `components.json` | shadcn config: style, aliases, css entry |
-| `src/routeTree.gen.ts` | Generated route tree — never edit by hand |
-| `src/styles.css` | Tailwind entry |
-| `vite.config.ts` | Vite plugins: devtools, tailwind, tanstackStart, react |
-| `pnpm-workspace.yaml` | pnpm `allowBuilds` — which packages may run install scripts |
-| `DESIGN.md` | This document |
+| Path                                 | Responsibility                                                             |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `src/router.tsx`                     | Router factory; augments `Register` so route types resolve app-wide        |
+| `src/routes/__root.tsx`              | Root layout, HTML shell, devtools                                          |
+| `src/routes/index.tsx`               | `/` route                                                                  |
+| `src/routes/login.tsx`               | `/login` route — form markup only, not wired                               |
+| `src/routes/register.tsx`            | `/register` route — signup form                                            |
+| `src/lib/auth.ts`                    | Auth server functions. `signUp` today; `signIn`/`signOut` to follow        |
+| `src/components/ui/`                 | shadcn-generated primitives — regenerated by `shadcn add`, don't hand-edit |
+| `src/lib/utils.ts`                   | Re-exports `cn`                                                            |
+| `src/lib/supabase/client.ts`         | Browser Supabase client                                                    |
+| `src/lib/supabase/server.ts`         | Server Supabase client — cookie-backed session                             |
+| `src/lib/supabase/database.types.ts` | Generated from the live schema by `pnpm gen:types` — never hand-edit       |
+| `supabase/`                          | Supabase CLI project root; migrations will live in `supabase/migrations/`  |
+| `.agents/skills/`                    | Vendored Supabase agent skills, pinned by `skills-lock.json`               |
+| `components.json`                    | shadcn config: style, aliases, css entry                                   |
+| `src/routeTree.gen.ts`               | Generated route tree — never edit by hand                                  |
+| `src/styles.css`                     | Tailwind entry                                                             |
+| `vite.config.ts`                     | Vite plugins: devtools, tailwind, tanstackStart, react                     |
+| `pnpm-workspace.yaml`                | pnpm `allowBuilds` — which packages may run install scripts                |
+| `DESIGN.md`                          | This document                                                              |
 
 ## 8. Conventions
 

@@ -1,3 +1,10 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+# Vendored / generated — rewritten by their tools, not by us
+.agents/
+.cta.json
+supabase/.temp/
+src/components/ui/
+src/routeTree.gen.ts
+src/lib/supabase/database.types.ts

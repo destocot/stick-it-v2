@@ -10,7 +10,7 @@ export const Route = createFileRoute('/login')({
 
 function RouteComponent() {
   return (
-    <main className=" h-dvh">
+    <main className="h-dvh">
       <div className="flex items-center h-full justify-center">
         <div className="flex flex-col gap-4 max-w-sm w-full">
           <div className="w-fit mx-auto px-4 py-0.5 border -skew-x-6 text-center">
@@ -28,9 +28,7 @@ function RouteComponent() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <Label className="label" htmlFor="password">
-                    Password
-                  </Label>
+                  <Label htmlFor="password">Password</Label>
                   <Input type="password" />
                 </div>
 
