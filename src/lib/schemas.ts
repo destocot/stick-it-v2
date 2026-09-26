@@ -18,7 +18,6 @@ export const SignUpSchema = v.object({
       'Your username can only contain letters, numbers and underscores.',
     ),
   ),
-  // Not trimmed: trimming a password silently changes it.
   password: v.pipe(
     v.string('Your password must be a string.'),
     v.nonEmpty('Please enter your password.'),
@@ -27,11 +26,3 @@ export const SignUpSchema = v.object({
 })
 
 export type SignUpInput = v.InferOutput<typeof SignUpSchema>
-
-export function firstIssue<TSchema extends v.GenericSchema>(
-  schema: TSchema,
-  input: unknown,
-): string | null {
-  const result = v.safeParse(schema, input)
-  return result.success ? null : result.issues[0].message
-}

@@ -3,55 +3,36 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signUp } from '@/lib/auth'
-import { SignUpSchema, firstIssue } from '@/lib/schemas'
+import { SignUpSchema } from '@/lib/schemas'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useState } from 'react'
+import { useActionState } from 'react'
+import * as v from 'valibot'
 
 export const Route = createFileRoute('/register')({
   component: RouteComponent,
 })
 
-function field(form: FormData, name: string): string {
-  const value = form.get(name)
-  return typeof value === 'string' ? value : ''
-}
-
 function RouteComponent() {
   const register = useServerFn(signUp)
   const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
 
-  const handleSubmit = async (evt: React.SubmitEvent<HTMLFormElement>) => {
-    evt.preventDefault()
-    setError(null)
-    setPending(true)
+  const [error, submit, pending] = useActionState(
+    async (_previous: string | null, form: FormData) => {
+      const parsed = v.safeParse(SignUpSchema, Object.fromEntries(form))
 
-    const form = new FormData(evt.target)
+      if (!parsed.success) return parsed.issues[0].message
 
-    const payload = {
-      email: field(form, 'email'),
-      password: field(form, 'password'),
-      username: field(form, 'username'),
-    }
+      const result = await register({ data: parsed.output })
 
-    // The server runs this schema too; here it is only to surface the message.
-    const issue = firstIssue(SignUpSchema, payload)
+      if (result.error) return result.error
 
-    if (issue) {
-      setPending(false)
-      setError(issue)
-      return
-    }
+      navigate({ to: '/' })
 
-    const result = await register({ data: payload })
-
-    setPending(false)
-
-    if (result.error) setError(result.error)
-    else navigate({ to: '/' })
-  }
+      return null
+    },
+    null,
+  )
 
   return (
     <main className="h-dvh">
@@ -65,7 +46,7 @@ function RouteComponent() {
 
           <Card>
             <CardContent>
-              <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+              <form action={submit} className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="email">Email</Label>
                   <Input type="email" id="email" name="email" />
