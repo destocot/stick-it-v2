@@ -70,15 +70,21 @@ _TBD — components, data flow, boundaries._
 
 Current live schema (from `src/lib/supabase/database.types.ts`):
 
-| Table             | Columns                               | Notes                                                                                                                                                                                                                                                                                                                        |
-| ----------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id`) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS. Trigger verified working 2026-09-26: one signup produced one matching profile row |
+| Table             | Columns                                                                                | Notes                                                                                                                                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id` `on delete cascade`), `username` (text, NOT NULL) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
 
-Deliberately absent for now: `username`. The register form collects it, but it is dropped until a first signup is confirmed working end to end.
+Open schema questions, all deliberate gaps rather than oversights:
+
+- `username` has no `UNIQUE` constraint, so two accounts can hold the same name.
+- `NOT NULL` does not reject `''`. The server function rejects a blank username at the app layer; a `CHECK` would enforce it for every caller.
+- `id` carries `DEFAULT gen_random_uuid()`, which is inert — the FK rejects any uuid absent from `auth.users`.
 
 Not yet created: the notes table backing the global feed.
 
-Profile creation: `public.handle_new_user()`, a `security definer` trigger function fired by `on_auth_user_created` `after insert on auth.users`. Created in the dashboard.
+Profile creation: `public.handle_new_user()`, a `security definer` trigger function fired by `on_auth_user_created` `after insert on auth.users`. It reads `new.raw_user_meta_data ->> 'username'` into `profiles.username`, then strips the key from `auth.users`.
+
+So the client supplies username through `signUp({ options: { data: { username } } })`. Consequence worth remembering: the access token minted during that same signup still carries the original metadata, so `user_metadata.username` is present on the first session and gone after a refresh. **Read username from `profiles`, never from the JWT.**
 
 Design constraints already known:
 

@@ -17,12 +17,15 @@ export type Database = {
       profiles: {
         Row: {
           id: string
+          username: string
         }
         Insert: {
           id?: string
+          username: string
         }
         Update: {
           id?: string
+          username?: string
         }
         Relationships: []
       }

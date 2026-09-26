@@ -33,6 +33,7 @@ function RouteComponent() {
       data: {
         email: field(form, 'email'),
         password: field(form, 'password'),
+        username: field(form, 'username'),
       },
     })
 
