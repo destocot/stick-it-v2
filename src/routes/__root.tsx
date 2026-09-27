@@ -4,13 +4,12 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import { getCurrentUser } from '@/lib/auth'
 
 import appCss from '../styles.css?url'
 import { buttonVariants } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 
 export const Route = createRootRoute({
   beforeLoad: async () => ({ user: await getCurrentUser() }),
@@ -73,17 +72,7 @@ function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
       </head>
       <body>
         {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        <Toaster />
         <Scripts />
       </body>
     </html>

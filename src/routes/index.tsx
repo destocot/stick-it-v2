@@ -1,6 +1,9 @@
+import { SignOutButton } from '@/components/sign-out-button'
 import { Input } from '@/components/ui/input'
 import { findAllNotes } from '@/lib/notes'
-import { createFileRoute } from '@tanstack/react-router'
+import { buttonVariants } from '@/components/ui/button'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { StickyNoteIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -9,13 +12,31 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const notes = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
 
   return (
     <main>
       <div className="p-4 py-16 min-h-dvh container mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 items-center md:justify-between">
+        <div className="border-b flex justify-between ">
+          <div className="flex items-center gap-2">
+            <h1 className="uppercase text-2xl leading-snug font-medium ">
+              Stick-It!
+            </h1>
+            <StickyNoteIcon />
+          </div>
+
+          {user ? (
+            <SignOutButton />
+          ) : (
+            <Link to="/login" className={buttonVariants({ size: 'sm' })}>
+              Sign in
+            </Link>
+          )}
+        </div>
+
+        <div className="pt-8 flex flex-col md:flex-row gap-4 items-center md:justify-between">
           <div className="w-fit px-4 py-0.5 border -skew-x-6 text-center">
-            <h1 className="uppercase text-2xl leading-snug font-medium skew-x-6">
+            <h1 className="uppercase text-xl leading-snug font-medium skew-x-6">
               Check out the most recent notes
             </h1>
           </div>
@@ -25,7 +46,7 @@ function Home() {
           </div>
         </div>
 
-        <div className="pt-4">
+        <div className="pt-8">
           <div className="grid grid-cols-4 gap-4">
             {notes.map((note) => (
               <pre

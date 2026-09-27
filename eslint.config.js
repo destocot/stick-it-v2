@@ -20,6 +20,7 @@ export default [
       'prettier.config.js',
       'src/routeTree.gen.ts',
       'src/lib/supabase/database.types.ts',
+      'src/components/ui/**',
     ],
   },
 ]
