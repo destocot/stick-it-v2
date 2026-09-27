@@ -37,7 +37,6 @@ function RouteComponent() {
 
       if (result.error) return result.error
 
-      // Reloads the root beforeLoad so context.user reflects the new session.
       await router.invalidate()
 
       navigate({ to: '/' })

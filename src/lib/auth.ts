@@ -2,7 +2,9 @@ import { createServerFn } from '@tanstack/react-start'
 import { createClient } from '@/lib/supabase/server'
 import { SignInSchema, SignUpSchema } from '@/lib/schemas'
 
-export type AuthResult = { error: string | null }
+export interface AuthResult {
+  error: string | null
+}
 
 export const signUp = createServerFn({ method: 'POST' })
   .validator(SignUpSchema)
@@ -47,18 +49,30 @@ export const signOut = createServerFn({ method: 'POST' }).handler(
   },
 )
 
-export type CurrentUser = { id: string; email: string | null }
+export interface CurrentUser {
+  id: string
+  email: string | null
+  username: string | null
+}
 
 export const getCurrentUser = createServerFn({ method: 'GET' }).handler(
   async (): Promise<CurrentUser | null> => {
     const supabase = createClient()
 
-    // getClaims verifies the JWT signature against the project JWKS.
-    // getSession would only decode the cookie, which the browser can rewrite.
     const { data, error } = await supabase.auth.getClaims()
 
     if (error || !data) return null
 
-    return { id: data.claims.sub, email: data.claims.email ?? null }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', data.claims.sub)
+      .maybeSingle()
+
+    return {
+      id: data.claims.sub,
+      email: data.claims.email ?? null,
+      username: profile?.username ?? null,
+    }
   },
 )
