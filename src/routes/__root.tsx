@@ -1,8 +1,14 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Link,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import appCss from '../styles.css?url'
+import { buttonVariants } from '@/components/ui/button'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -26,7 +32,35 @@ export const Route = createRootRoute({
     ],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: NotFound,
 })
+
+function NotFound() {
+  return (
+    <main className="h-dvh">
+      <div className="flex items-center h-full justify-center">
+        <div className="flex flex-col gap-4 max-w-sm w-full">
+          <div className="w-fit mx-auto px-4 py-0.5 border -skew-x-6 text-center">
+            <h1 className="uppercase text-2xl leading-snug font-medium skew-x-6">
+              404
+            </h1>
+          </div>
+
+          <p className="text-center text-sm uppercase">Page not found</p>
+
+          <Link
+            to="/"
+            className={buttonVariants({
+              className: 'max-w-fit mx-auto',
+            })}
+          >
+            Return Home
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
+}
 
 function RootDocument({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

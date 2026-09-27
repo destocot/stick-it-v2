@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { createClient } from '@/lib/supabase/server'
-import { SignUpSchema } from '@/lib/schemas'
+import { SignInSchema, SignUpSchema } from '@/lib/schemas'
 
 export type AuthResult = { error: string | null }
 
@@ -19,3 +19,30 @@ export const signUp = createServerFn({ method: 'POST' })
 
     return { error: null }
   })
+
+export const signIn = createServerFn({ method: 'POST' })
+  .validator(SignInSchema)
+  .handler(async ({ data }): Promise<AuthResult> => {
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    })
+
+    if (error) return { error: error.message }
+
+    return { error: null }
+  })
+
+export const signOut = createServerFn({ method: 'POST' }).handler(
+  async (): Promise<AuthResult> => {
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
+
+    if (error) return { error: error.message }
+
+    return { error: null }
+  },
+)

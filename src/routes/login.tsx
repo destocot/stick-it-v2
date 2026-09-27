@@ -2,13 +2,38 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { signIn } from '@/lib/auth'
+import { SignInSchema } from '@/lib/schemas'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
+import { useActionState } from 'react'
+import * as v from 'valibot'
 
 export const Route = createFileRoute('/login')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
+  const login = useServerFn(signIn)
+  const navigate = useNavigate()
+
+  const [error, submit, pending] = useActionState(
+    async (_previous: string | null, form: FormData) => {
+      const parsed = v.safeParse(SignInSchema, Object.fromEntries(form))
+
+      if (!parsed.success) return parsed.issues[0].message
+
+      const result = await login({ data: parsed.output })
+
+      if (result.error) return result.error
+
+      navigate({ to: '/' })
+
+      return null
+    },
+    null,
+  )
+
   return (
     <main className="h-dvh">
       <div className="flex items-center h-full justify-center">
@@ -21,29 +46,40 @@ function RouteComponent() {
 
           <Card>
             <CardContent>
-              <form className="flex flex-col gap-2">
+              <form action={submit} className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="email">Email</Label>
-                  <Input type="email" />
+                  <Input type="email" id="email" name="email" />
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="password">Password</Label>
-                  <Input type="password" />
+                  <Input type="password" id="password" name="password" />
                 </div>
+
+                {error ? (
+                  <p className="text-destructive text-sm">{error}</p>
+                ) : null}
 
                 <Button
                   type="submit"
                   className="hover:text-primary hover:bg-primary-foreground hover:border-border"
+                  disabled={pending}
                 >
-                  Login
+                  {pending ? 'Logging in...' : 'Login'}
                 </Button>
               </form>
             </CardContent>
 
             <CardFooter>
               <span>
-                Not a member? Register <Link to="/register">here</Link>
+                Not a member? Register{' '}
+                <Link
+                  to="/register"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  here
+                </Link>
               </span>
             </CardFooter>
           </Card>
