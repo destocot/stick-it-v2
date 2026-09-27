@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
+import { LoaderIcon, LogOutIcon } from 'lucide-react'
 import { useActionState } from 'react'
 import { toast } from 'sonner'
 
@@ -28,7 +29,8 @@ export function SignOutButton() {
   return (
     <form action={submit}>
       <Button type="submit" variant="destructive" size="sm" disabled={pending}>
-        {pending ? 'Signing out...' : 'Sign out'}
+        {pending ? <LoaderIcon className="animate-spin" /> : <LogOutIcon />}
+        Sign out
       </Button>
     </form>
   )

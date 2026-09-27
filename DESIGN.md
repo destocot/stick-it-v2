@@ -179,6 +179,13 @@ After any schema change: run `pnpm gen:types` to refresh `database.types.ts`, an
 
 `VITE_`-prefixed env vars are shipped to the browser bundle. Only the publishable/anon key belongs there. The service-role key is a non-prefixed server-only var and must never be imported into a file reachable from a component.
 
+## 8b. Deferred to post-MVP
+
+- Accessibility pass: `aria-busy` on pending controls, `motion-safe:` on animations, focus management.
+- `errorComponent` / `pendingComponent` / `staleTime` on routes.
+- Explicit column lists and `.limit()` on feed queries, in place of `select('*')`.
+- Narrowing the `notes` grants — the dashboard toggle gave `anon` and `authenticated` all four operations.
+
 ## 9. Open Questions
 
 - What is the app? Awaiting first feature request.

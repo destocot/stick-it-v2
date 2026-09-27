@@ -26,7 +26,12 @@ function Home() {
           </div>
 
           {user ? (
-            <SignOutButton />
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                Welcome, {user.username}
+              </span>
+              <SignOutButton />
+            </div>
           ) : (
             <Link to="/login" className={buttonVariants({ size: 'sm' })}>
               Sign in
