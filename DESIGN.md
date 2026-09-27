@@ -73,9 +73,10 @@ _TBD — components, data flow, boundaries._
 
 Current live schema (from `src/lib/supabase/database.types.ts`):
 
-| Table             | Columns                                                                                        | Notes                                                                                                                                                                                                                                     |
-| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id` `on delete cascade`), `username` (text, NOT NULL, UNIQUE) | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS |
+| Table             | Columns                                                                                            | Notes                                                                                                                                                                                                                                                                             |
+| ----------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.profiles` | `id` (uuid, PK, FK → `auth.users.id` `on delete cascade`), `username` (text, NOT NULL, UNIQUE)     | RLS on. **Zero policies and zero DML grants, so the table is still unreadable from the app** — a SELECT grant and policy are outstanding. No INSERT grant or policy by design: rows come only from the signup trigger, which bypasses RLS                                         |
+| `public.notes`    | `id` (uuid, PK), `created_at`, `updated_at`, `profile_id` (FK → `profiles.id` `on delete cascade`) | RLS on, one SELECT policy for `authenticated`. **No content column yet.** Grants came from the dashboard's Exposed-tables toggle, so `anon` and `authenticated` both hold INSERT/UPDATE/DELETE as well as SELECT — wider than the design needs, with only RLS holding writes back |
 
 Open schema question: `NOT NULL` does not reject `''`. The server function rejects a blank username at the app layer; a `CHECK (length(trim(username)) > 0)` would enforce it for every caller.
 
@@ -122,6 +123,16 @@ All live in `src/lib/auth.ts`. Each is a public HTTP endpoint, so its validator 
 
 **`beforeLoad` guards are UX, not security.** They run on the client during client-side navigation and can be bypassed. Enforcement belongs in RLS policies and inside the server functions; a guard only saves a wasted render.
 
+### Data loading
+
+Route `loader` fetches, never `useEffect` — the loader runs before render on the server during SSR and on the client during navigation, so the feed ships in the HTML.
+
+`beforeLoad` runs first (guards, context); `loader` runs after and may rely on context being populated. A loader failure is a broken page, so loaders `throw`; auth mutations return `{ error }` because a wrong password is ordinary.
+
+`errorComponent`, `pendingComponent` and `staleTime` are deliberately unset for now — simple first, tuned when it matters. `@tanstack/react-query` is the addition to make when Realtime needs somewhere to push rows.
+
+### Route protection status
+
 Current guards: `/login` and `/register` redirect to `/` when `context.user` is set. No page yet requires a session.
 
 ## 7. File Map
@@ -133,7 +144,9 @@ Current guards: `/login` and `/register` redirect to `/` when `context.user` is 
 | `src/routes/index.tsx`               | `/` route                                                                  |
 | `src/routes/login.tsx`               | `/login` route — form markup only, not wired                               |
 | `src/routes/register.tsx`            | `/register` route — signup form                                            |
-| `src/lib/auth.ts`                    | Auth server functions. `signUp` today; `signIn`/`signOut` to follow        |
+| `src/lib/auth.ts`                    | Auth server functions: `signUp`, `signIn`, `signOut`, `getCurrentUser`     |
+| `src/lib/notes.ts`                   | Note server functions: `findAllNotes`                                      |
+| `src/lib/schemas.ts`                 | Shared Valibot schemas — no server-only imports, so routes can reuse them  |
 | `src/components/ui/`                 | shadcn-generated primitives — regenerated by `shadcn add`, don't hand-edit |
 | `src/lib/utils.ts`                   | Re-exports `cn`                                                            |
 | `src/lib/supabase/client.ts`         | Browser Supabase client                                                    |

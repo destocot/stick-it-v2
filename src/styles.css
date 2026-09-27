@@ -132,3 +132,9 @@
     @apply font-sans;
   }
 }
+
+@utility container {
+  @variant 2xl {
+    max-width: 80rem;
+  }
+}
