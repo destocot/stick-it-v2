@@ -4,18 +4,28 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signUp } from '@/lib/auth'
 import { SignUpSchema } from '@/lib/schemas'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useActionState } from 'react'
 import * as v from 'valibot'
 
 export const Route = createFileRoute('/register')({
   component: RouteComponent,
+  beforeLoad: ({ context }) => {
+    if (context.user) throw redirect({ to: '/' })
+  },
 })
 
 function RouteComponent() {
   const register = useServerFn(signUp)
   const navigate = useNavigate()
+  const router = useRouter()
 
   const [error, submit, pending] = useActionState(
     async (_previous: string | null, form: FormData) => {
@@ -26,6 +36,9 @@ function RouteComponent() {
       const result = await register({ data: parsed.output })
 
       if (result.error) return result.error
+
+      // Reloads the root beforeLoad so context.user reflects the new session.
+      await router.invalidate()
 
       navigate({ to: '/' })
 

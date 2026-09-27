@@ -7,10 +7,13 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
+import { getCurrentUser } from '@/lib/auth'
+
 import appCss from '../styles.css?url'
 import { buttonVariants } from '@/components/ui/button'
 
 export const Route = createRootRoute({
+  beforeLoad: async () => ({ user: await getCurrentUser() }),
   head: () => ({
     meta: [
       {

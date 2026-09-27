@@ -46,3 +46,19 @@ export const signOut = createServerFn({ method: 'POST' }).handler(
     return { error: null }
   },
 )
+
+export type CurrentUser = { id: string; email: string | null }
+
+export const getCurrentUser = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<CurrentUser | null> => {
+    const supabase = createClient()
+
+    // getClaims verifies the JWT signature against the project JWKS.
+    // getSession would only decode the cookie, which the browser can rewrite.
+    const { data, error } = await supabase.auth.getClaims()
+
+    if (error || !data) return null
+
+    return { id: data.claims.sub, email: data.claims.email ?? null }
+  },
+)
