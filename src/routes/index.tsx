@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { findAllNotes } from '@/lib/notes'
 import { buttonVariants } from '@/components/ui/button'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { StickyNoteIcon } from 'lucide-react'
+import { StickyNoteIcon, StickyNotePlusIcon, UserRoundIcon } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -24,6 +24,31 @@ function Home() {
             </h1>
             <StickyNoteIcon />
           </div>
+
+          {user ? (
+            <div className="hidden md:flex md:items-center md:gap-2">
+              {user.username ? (
+                <Link
+                  to="/profile/$username"
+                  params={{ username: user.username }}
+                  className={buttonVariants({
+                    variant: 'ghost',
+                    size: 'sm',
+                  })}
+                >
+                  <UserRoundIcon />
+                  Profile
+                </Link>
+              ) : null}
+              <Link
+                to="/notes/new"
+                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+              >
+                <StickyNotePlusIcon />
+                Create Note
+              </Link>
+            </div>
+          ) : null}
 
           {user ? (
             <div className="flex items-center gap-2">

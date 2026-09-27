@@ -37,3 +37,11 @@ export const SignInSchema = v.object({
     v.nonEmpty('Please enter your password.'),
   ),
 })
+
+export const FindOneProfileSchema = v.object({
+  username: v.pipe(
+    v.string('Your username must be a string.'),
+    v.trim(),
+    v.nonEmpty('Please enter your username.'),
+  ),
+})
